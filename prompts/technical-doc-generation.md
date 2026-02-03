@@ -6,31 +6,37 @@ Use this prompt when generating internal technical documentation from codebase a
 
 ## CRITICAL RULES
 
-### 1. Verify implementations, not definitions
+### 1. Only document what's implemented
+- Do NOT list features that aren't working
+- Do NOT include "Not implemented" rows
+- If it doesn't work, it doesn't exist in the doc
+- Constants and type definitions are NOT features
+
+### 2. Verify implementations, not definitions
 - Type definitions, structs, and constants do NOT prove something works
 - You must trace the actual execution path to verify functionality
 - Look for: TODO comments, empty array initializations, error returns, stubbed functions
+- If you find any of these → do not include the feature
 
-### 2. For each feature/capability, ask:
+### 3. For each feature/capability, ask:
 - Where is the entry point?
 - What functions are actually called?
 - Is there real logic, or just a type/constant defined?
 - Does the execution path complete, or does it error out?
 
-### 3. Data sources checklist
+### 4. Data sources checklist
 - Find where data is fetched (look for DB queries, API calls)
-- If a field exists in a struct but no query populates it → "Not implemented"
-- If there's a TODO comment → "Not implemented"
+- If a field exists in a struct but no query populates it → exclude
+- If there's a TODO comment → exclude
 
-### 4. Configuration options checklist
+### 5. Configuration options checklist
 - Find where the option is actually handled (switch statements, if conditions)
-- If a constant exists but no code handles it → "Not implemented"
-- If handling returns an error → "Not implemented"
+- If a constant exists but no code handles it → exclude
+- If handling returns an error → exclude
 
-### 5. Documentation format
+### 6. Documentation format
 - Use tables for structured information
 - Include file:line references for every claim
-- Mark unimplemented features explicitly with status column
 - No code blocks - just references
 - Keep it scannable
 
@@ -51,9 +57,9 @@ Use this prompt when generating internal technical documentation from codebase a
 ---
 
 ## [Core Functionality - e.g., Data Sources]
-| Item | Status | Reference |
-|------|--------|-----------|
-| [Name] | Implemented / Not implemented | `file.go:line` |
+| Item | Reference |
+|------|-----------|
+| [Name] | `file.go:line` |
 
 ---
 
@@ -67,9 +73,9 @@ Use this prompt when generating internal technical documentation from codebase a
 
 ## Configuration
 **[Category]** (`file.go:lines`)
-| Option | Status | Reference |
-|--------|--------|-----------|
-| [Name] | Implemented / Not implemented | `file.go:line` |
+| Option | Value | Reference |
+|--------|-------|-----------|
+| [Name] | [Value] | `file.go:line` |
 
 ---
 
@@ -96,8 +102,9 @@ Use this prompt when generating internal technical documentation from codebase a
 
 ## VERIFICATION CHECKLIST
 
-Before including any claim, confirm:
+Before including any claim:
 - [ ] Found the actual function that does this (not just a type)
 - [ ] Traced from entry point to this function
 - [ ] Confirmed no TODO/stub/error-return blocking it
 - [ ] Have a specific file:line reference
+- [ ] The feature actually works end-to-end
