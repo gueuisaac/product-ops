@@ -4,41 +4,58 @@ Use this prompt when generating internal technical documentation from codebase a
 
 ---
 
+## DISCOVERY PROCESS
+
+### Step 1: Find the entry point
+- Locate the main function or API endpoint that triggers the feature
+- Document the file:line reference
+
+### Step 2: Trace the full execution path
+- Follow function calls from entry point to completion
+- Map out the complete data flow
+- Identify all major steps/stages in the process
+
+### Step 3: Document each stage thoroughly
+For each stage in the process, find and document:
+- What data comes in
+- What processing happens
+- What data comes out
+- Any aggregation or combination logic (e.g., intermediate → final)
+
+### Step 4: Find all configuration touchpoints
+- Filters: What can users filter by? Trace filter application in code
+- Custom fields: Are custom fields supported? How are they used?
+- Settings: What options affect behavior?
+
+### Step 5: Document the data model
+- What database tables are involved?
+- How do they relate to each other?
+- What's the lifecycle of data (created → updated → used)?
+
+---
+
 ## CRITICAL RULES
 
 ### 1. Only document what's implemented
 - Do NOT list features that aren't working
-- Do NOT include "Not implemented" rows
 - If it doesn't work, it doesn't exist in the doc
 - Constants and type definitions are NOT features
 
 ### 2. Verify implementations, not definitions
 - Type definitions, structs, and constants do NOT prove something works
-- You must trace the actual execution path to verify functionality
-- Look for: TODO comments, empty array initializations, error returns, stubbed functions
+- Trace the actual execution path to verify functionality
+- Look for: TODO comments, empty array initializations, error returns
 - If you find any of these → do not include the feature
 
-### 3. For each feature/capability, ask:
-- Where is the entry point?
-- What functions are actually called?
-- Is there real logic, or just a type/constant defined?
-- Does the execution path complete, or does it error out?
+### 3. Be thorough about processes
+- Don't just list "what" - explain "how"
+- If data is aggregated or combined, document that process
+- If there are multiple stages, explain how they connect
 
-### 4. Data sources checklist
-- Find where data is fetched (look for DB queries, API calls)
-- If a field exists in a struct but no query populates it → exclude
-- If there's a TODO comment → exclude
-
-### 5. Configuration options checklist
-- Find where the option is actually handled (switch statements, if conditions)
-- If a constant exists but no code handles it → exclude
-- If handling returns an error → exclude
-
-### 6. Documentation format
-- Use tables for structured information
-- Include file:line references for every claim
-- No code blocks - just references
-- Keep it scannable
+### 4. Document filtering and customization
+- What filters are available and where are they applied?
+- Are custom fields supported? How?
+- What can users configure?
 
 ---
 
@@ -52,43 +69,53 @@ Use this prompt when generating internal technical documentation from codebase a
 ---
 
 ## Overview
-[1-2 sentences. Entry point reference.]
+[2-3 sentences explaining what the feature does and how it works at a high level.]
+
+**Entry point:** `file.go:line`
 
 ---
 
-## [Core Functionality - e.g., Data Sources]
-| Item | Reference |
-|------|-----------|
+## How It Works
+
+### [Stage 1 Name]
+[Explain what happens in this stage]
+
+| Input | Output | Reference |
+|-------|--------|-----------|
+| [what comes in] | [what comes out] | `file.go:line` |
+
+### [Stage 2 Name]
+[Explain what happens, especially any aggregation/combination logic]
+
+...continue for each stage...
+
+---
+
+## Data Sources
+| Source | Reference |
+|--------|-----------|
 | [Name] | `file.go:line` |
 
 ---
 
-## [Processing/Pipeline]
-**Stage N:** [Description] (`file.go:line`)
+## Filters
+| Filter | Applied At | Reference |
+|--------|------------|-----------|
+| [Name] | [where in the process] | `file.go:line` |
+
+---
+
+## Configuration
 | Setting | Value | Reference |
 |---------|-------|-----------|
 | [Name] | [Value] | `file.go:line` |
 
 ---
 
-## Configuration
-**[Category]** (`file.go:lines`)
-| Option | Value | Reference |
-|--------|-------|-----------|
-| [Name] | [Value] | `file.go:line` |
-
----
-
 ## Database Tables
-| Table | Model | Reference |
-|-------|-------|-----------|
-| [name] | [Struct] | `models/file.go:line` |
-
----
-
-## Execution Flow
-1. [Step] — `file.go:line`
-2. [Step] — `file.go:line`
+| Table | Purpose | Reference |
+|-------|---------|-----------|
+| [name] | [what it stores] | `models/file.go:line` |
 
 ---
 
@@ -108,3 +135,10 @@ Before including any claim:
 - [ ] Confirmed no TODO/stub/error-return blocking it
 - [ ] Have a specific file:line reference
 - [ ] The feature actually works end-to-end
+
+Before finalizing the doc:
+- [ ] Documented the full process, not just components
+- [ ] Explained any aggregation/combination logic
+- [ ] Listed all available filters
+- [ ] Noted custom field support (or lack thereof)
+- [ ] Covered the complete data lifecycle
