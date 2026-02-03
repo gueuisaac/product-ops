@@ -1,52 +1,132 @@
 # AI Reports - Technical Documentation
 
+*Generated from codebase analysis. All statements include code references.*
+
+---
+
 ## Overview
 
-AI Reports automatically generates periodic insights from customer conversations, call recordings, and manual account data using a two-stage AI pipeline. Reports are delivered via Slack or email on configurable schedules.
+AI Reports generates periodic insights from customer data using a two-stage AI pipeline. Reports are delivered via Slack or email on configurable schedules.
+
+**Entry point:** `backend/go/src/pylon/crons/cmd/aireports/main.go:33`
+```go
+if err := reportsAccessor.GenerateIntermediatesCron(ctx); err != nil {
+```
 
 ---
 
-## Data Sources
+## Data Sources (Verified)
 
-The following data sources are currently analyzed to generate insights:
+Data fetching occurs in `backend/go/src/pylon/reports/accessor.go:2249-2306` (`FetchRelevantDataForReport` function).
 
-- **Issues** - Customer support tickets and conversations
-- **Call Recordings** - Transcribed customer calls
-- **Manual Entries** - User-submitted data points for accounts
+**Currently fetching data:**
 
-**Note:** The codebase has struct fields for Activity Logs and Internal Messages, but data fetching for these is not yet implemented (marked as TODO in `reports/accessor.go`).
+| Source | DB Query Function | Code Reference |
+|--------|-------------------|----------------|
+| Issues | `GetIssuesByOrgIDAndAccountIDsHappenedBetween` | `accessor.go:2269` |
+| Issues (all) | `GetIssuesByOrgIDHappenedBetween` | `accessor.go:2274` |
+| Call Recordings | `GetCallRecordingsByAccountIDsAndTimeRange` | `accessor.go:2280` |
+| Manual Entries | `GetManualEntriesForAccountsInTimeRange` | `accessor.go:2285` |
+
+**NOT implemented (empty arrays with TODO comments):**
+
+```go
+// accessor.go:2290-2294
+// TODO: Fetch activity logs for filtered accounts and time period
+activityLogs := []accountactivitytypes.AccountActivity{}
+
+// TODO: Fetch internal messages for filtered accounts and time period
+internalMessages := []*models.MessageAssociation{}
+```
 
 ---
 
-## Data Flow
+## AI Pipeline
 
+### Stage 1: Filtering (GPT-5 Mini)
+
+**Model:** `FilterRelevantDataItemsForAIReportInsightGPT5Mini`  
+**Code reference:** `backend/go/src/pylon/reports/aireportinsights/accessor.go:799`
+
+**Filtering limits** (from `DefaultHyperparameters()` at `aireportinsights/accessor.go:112-138`):
+
+| Parameter | Value | Code Line |
+|-----------|-------|-----------|
+| `MaxFilteredIssues` | 50 | `:126` |
+| `MaxFilteredCallRecordings` | 10 | `:127` |
+| `MaxFilteredManualEntries` | 10 | `:129` |
+| `ContentTruncateLength` | 1500 | `:124` |
+
+### Stage 2: Insight Generation (Claude Sonnet 4)
+
+**Prompt:** `AIReportInsightReportClaude4Sonnet`  
+**Code reference:** `backend/go/src/pylon/ai/prompts/aireportprompts/ai_report_insight.go:286-299`
+
+```go
+DefaultModel:     aimodels.ModelAnthropicClaude4SonnetV1,
+CloudHostedModel: aimodels.ModelBedrockAnthropicClaude4SonnetV1,
+MaxOutputTokens: 4096,
 ```
-┌─────────────┐    ┌──────────────┐    ┌─────────────────┐    ┌──────────┐
-│ Cron Job    │───▶│ Data Fetch   │───▶│ GPT-5 Mini      │───▶│ Claude   │
-│ (Schedule)  │    │ (All Sources)│    │ (Filter/Rank)   │    │ Sonnet 4 │
-└─────────────┘    └──────────────┘    └─────────────────┘    └────┬─────┘
-                                                                   │
-                                        ┌──────────────────────────┘
-                                        ▼
-                                   ┌──────────┐
-                                   │ Delivery │
-                                   │ (Slack/  │
-                                   │  Email)  │
-                                   └──────────┘
-```
 
-### Processing Steps
+---
 
-1. **Data Collection**: Cron job (`aireports/main.go`) triggers on schedule and gathers data from all sources within the configured time range.
+## Database Tables
 
-2. **Filtering Stage**: GPT-5 Mini filters and ranks data for relevance.
-   - Max Issues: 50
-   - Max Call Recordings: 10
-   - Max Manual Entries: 20
+From `backend/go/src/pylon/models/reports.go`:
 
-3. **Insight Generation**: Claude Sonnet 4 (via AWS Bedrock) analyzes filtered data and generates structured insights based on widget prompts.
+| Table | Model | Primary Fields |
+|-------|-------|----------------|
+| `report_templates` | `ReportTemplate` | ID, OrganizationID, Title, Status, DeliveryMetadata, Schedule, DataTimeRange, Timezone |
+| `report_template_widgets` | `ReportTemplateWidget` | ID, OrganizationID, Name, Config, WidgetType |
+| `report_template_to_widget_layouts` | `ReportTemplateToWidgetLayout` | TemplateID, WidgetID, Row, ColumnStart, ColumnEnd |
+| `reports` | `Report` | ID, TemplateID, Status, PeriodStart, PeriodEnd, DeliveryMetadata |
+| `report_widgets` | `ReportWidget` | ID, ReportID, WidgetType, ContentHTML, MarkdownContentBlocks |
+| `ai_report_insights` | `AIReportInsight` | ID, TemplateID, Scope, PromptHash, PeriodStart, PeriodEnd, ContentBlocks |
 
-4. **Delivery**: Report sent via configured channel (Slack or Email) with formatted insights.
+---
+
+## Configuration Options
+
+### Time Ranges
+
+From `backend/go/src/pylon/reports/reporttypes/reporttypes.go:130-142`:
+
+| Constant | Value | Duration |
+|----------|-------|----------|
+| `ReportDataTimeRangeLast1Day` | `"last_1_day"` | 24h |
+| `ReportDataTimeRangeLast7Days` | `"last_7_days"` | 168h |
+| `ReportDataTimeRangeLast1Month` | `"last_1_month"` | 720h |
+| `ReportDataTimeRangeLast3Months` | `"last_3_months"` | 2160h |
+
+### Delivery Methods
+
+From `reporttypes/reporttypes.go:36-44`:
+
+| Constant | Value |
+|----------|-------|
+| `ReportDeliveryMethodSlack` | `"slack"` |
+| `ReportDeliveryMethodEmail` | `"email"` |
+
+### Template Statuses
+
+From `reporttypes/reporttypes.go:14-18`:
+
+| Status | Value |
+|--------|-------|
+| `ReportTemplateStatusDraft` | `"draft"` |
+| `ReportTemplateStatusPublished` | `"published"` |
+| `ReportTemplateStatusUnpublished` | `"unpublished"` |
+
+---
+
+## Cron Execution Flow
+
+1. **Entry:** `crons/cmd/aireports/main.go:33` calls `GenerateIntermediatesCron()`
+2. **Lock acquisition:** `reports/backfill.go:566` - acquires `"aireportsintermediatelock"` with 24h timeout
+3. **Org iteration:** `backfill.go:578` - iterates all organizations in parallel (10 workers)
+4. **Template processing:** `backfill.go:584` - for each published template, calls `GeneratePreviousDayIntermediatesForReportTemplate()`
+5. **Period calculation:** `backfill.go:626-631` - calculates yesterday's period in template timezone
+6. **Widget generation:** `backfill.go:639` - calls `backfillAllWidgetsForDate()` for AI widgets
 
 ---
 
@@ -54,81 +134,18 @@ The following data sources are currently analyzed to generate insights:
 
 | File | Purpose |
 |------|---------|
-| `backend/go/src/pylon/models/reports.go` | Database models (ReportTemplate, Report, ReportWidget, AIReportInsight) |
-| `backend/go/src/pylon/reports/aireportinsights/accessor.go` | Core AI insights generation logic |
-| `backend/go/src/pylon/reports/accessor.go` | Data fetching and report orchestration (see line ~2250 for data sources) |
-| `backend/go/src/pylon/ai/prompts/aireportprompts/ai_report_insight.go` | AI prompt templates |
-| `backend/go/src/pylon/crons/cmd/aireports/main.go` | Cron job entry point |
-| `backend/go/src/pylon/graphql/graph/schema.reports.graphqls` | GraphQL API schema |
+| `crons/cmd/aireports/main.go` | Cron entry point |
+| `reports/backfill.go:563` | `GenerateIntermediatesCron()` - main cron logic |
+| `reports/accessor.go:2249` | `FetchRelevantDataForReport()` - data fetching |
+| `reports/aireportinsights/accessor.go:112` | `DefaultHyperparameters()` - filtering limits |
+| `reports/aireportinsights/accessor.go:140` | `AIReportInsightsInput` struct |
+| `ai/prompts/aireportprompts/ai_report_insight.go:286` | Claude Sonnet 4 prompt definition |
+| `reports/reporttypes/reporttypes.go` | Type definitions and constants |
+| `models/reports.go` | Database model definitions |
 
 ---
 
-## Database Tables
+## Notes
 
-| Table | Description |
-|-------|-------------|
-| `report_templates` | Template definitions with schedule config |
-| `report_template_widgets` | Widget configurations per template |
-| `reports` | Generated report instances |
-| `report_widgets` | Widget data per report |
-| `ai_report_insights` | Cached AI-generated insights |
-
----
-
-## Configuration
-
-### Time Ranges
-- `last_1_day` - Past 24 hours
-- `last_7_days` - Past week
-- `last_1_month` - Past month
-- `last_3_months` - Past quarter
-
-### Delivery Methods
-- **Slack** - Posts to configured channel
-- **Email** - Sends to configured recipients
-
-### Schedule
-Reports run on configurable cron expressions (e.g., daily, weekly).
-
----
-
-## API / GraphQL
-
-### Mutations
-- `createReportTemplate` - Create a new report template
-- `updateReportTemplate` - Update existing template
-
-### Queries
-- `reportTemplates` - List all templates
-- `reportTemplate(id)` - Get single template
-- `reports` - List generated reports
-- `generateReportPreview` - Test report generation
-
----
-
-## Dependencies
-
-- **AWS Bedrock** - Claude Sonnet 4 model access
-- **OpenAI API** - GPT-5 Mini for filtering
-- **Slack API** - Report delivery
-- **Email Service** - Report delivery
-
----
-
-## How to Extend
-
-### Add a New Data Source
-1. Update `AIReportInsightsInput` struct in `aireportinsights/accessor.go`
-2. Add data fetching logic in `reports/accessor.go` (see `GetRelevantDataForReport` function around line 2250)
-3. Update hyperparameters in `DefaultHyperparameters()` for filtering limits
-4. Update the AI prompt to include the new data type
-
-### Add a New Widget Type
-1. Add to `WidgetType` enum in `reporttypes/reporttypes.go`
-2. Create new prompt template in `ai/prompts/aireportprompts/`
-3. Add widget handling in the report generator
-
-### Add a New Delivery Channel
-1. Implement delivery interface in `reports/delivery/` package
-2. Add channel type to delivery configuration
-3. Update report template schema if needed
+- Activity Logs and Internal Messages fields exist in structs but data fetching is not implemented (TODO at `accessor.go:2290-2294`)
+- The prompt schema (`ai_report_insight.go:46-126`) includes citation fields for all 5 data types, but only 3 are populated with data
