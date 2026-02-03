@@ -2,19 +2,19 @@
 
 ## Overview
 
-AI Reports automatically generates periodic insights from customer conversations, call recordings, and activity data using a two-stage AI pipeline. Reports are delivered via Slack or email on configurable schedules.
+AI Reports automatically generates periodic insights from customer conversations, call recordings, and manual account data using a two-stage AI pipeline. Reports are delivered via Slack or email on configurable schedules.
 
 ---
 
 ## Data Sources
 
-The following data sources are analyzed to generate insights:
+The following data sources are currently analyzed to generate insights:
 
 - **Issues** - Customer support tickets and conversations
 - **Call Recordings** - Transcribed customer calls
-- **Activity Logs** - User actions and events
-- **Manual Entries** - User-submitted data points
-- **Internal Messages** - Team communications
+- **Manual Entries** - User-submitted data points for accounts
+
+**Note:** The codebase has struct fields for Activity Logs and Internal Messages, but data fetching for these is not yet implemented (marked as TODO in `reports/accessor.go`).
 
 ---
 
@@ -42,9 +42,7 @@ The following data sources are analyzed to generate insights:
 2. **Filtering Stage**: GPT-5 Mini filters and ranks data for relevance.
    - Max Issues: 50
    - Max Call Recordings: 10
-   - Max Activity Logs: 50
    - Max Manual Entries: 20
-   - Max Internal Messages: 50
 
 3. **Insight Generation**: Claude Sonnet 4 (via AWS Bedrock) analyzes filtered data and generates structured insights based on widget prompts.
 
@@ -58,6 +56,7 @@ The following data sources are analyzed to generate insights:
 |------|---------|
 | `backend/go/src/pylon/models/reports.go` | Database models (ReportTemplate, Report, ReportWidget, AIReportInsight) |
 | `backend/go/src/pylon/reports/aireportinsights/accessor.go` | Core AI insights generation logic |
+| `backend/go/src/pylon/reports/accessor.go` | Data fetching and report orchestration (see line ~2250 for data sources) |
 | `backend/go/src/pylon/ai/prompts/aireportprompts/ai_report_insight.go` | AI prompt templates |
 | `backend/go/src/pylon/crons/cmd/aireports/main.go` | Cron job entry point |
 | `backend/go/src/pylon/graphql/graph/schema.reports.graphqls` | GraphQL API schema |
@@ -119,9 +118,10 @@ Reports run on configurable cron expressions (e.g., daily, weekly).
 ## How to Extend
 
 ### Add a New Data Source
-1. Update `AIReportInsightsInput` struct in `accessor.go`
-2. Add data fetching logic in the accessor
-3. Update the AI prompt to include the new data type
+1. Update `AIReportInsightsInput` struct in `aireportinsights/accessor.go`
+2. Add data fetching logic in `reports/accessor.go` (see `GetRelevantDataForReport` function around line 2250)
+3. Update hyperparameters in `DefaultHyperparameters()` for filtering limits
+4. Update the AI prompt to include the new data type
 
 ### Add a New Widget Type
 1. Add to `WidgetType` enum in `reporttypes/reporttypes.go`
