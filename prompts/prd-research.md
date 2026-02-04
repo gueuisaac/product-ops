@@ -43,32 +43,45 @@ Compare competitors vs current implementation:
 - What are we missing that's table stakes?
 - What are we missing that's a differentiator?
 
+## Phase 4: Save to GitHub
+
+After generating the research, save the output to GitHub:
+- Repository: gueuisaac/product-ops
+- Path: research/[feature-name-kebab-case].md
+- Example: research/advanced-slas.md
+
+Use the mcp__github__create_or_update_file tool to save the file.
+
 ## Output Format
 
-```markdown
-## [Feature Name]: PRD Research Baseline
+Generate this markdown and save it to GitHub:
 
-### Summary
+```markdown
+# [Feature Name]: PRD Research Baseline
+
+*Generated: [current date]*
+
+## Summary
 [2-3 sentences on what this feature is and why it matters]
 
 ---
 
-### Competitive Analysis
+## Competitive Analysis
 
-#### Salesforce
+### Salesforce
 - **Feature name:**
 - **How it works:**
 - **Key capabilities:**
 - **Limitations:**
 - **Sources:** [links]
 
-#### Zendesk
+### Zendesk
 [same structure]
 
-#### Intercom
+### Intercom
 [same structure]
 
-#### HubSpot
+### HubSpot
 [same structure]
 
 ### Common Patterns
@@ -78,24 +91,24 @@ Compare competitors vs current implementation:
 
 ---
 
-### Current Pylon Implementation
+## Current Pylon Implementation
 
-#### Data Model
+### Data Model
 | Table/Struct | Purpose | Reference |
 |--------------|---------|-----------|
 | [name] | [what it does] | `file.go:line` |
 
-#### Current Capabilities
+### Current Capabilities
 - [What's already built]
 
-#### Key Files
+### Key Files
 | File | Purpose |
 |------|---------|
 | [path] | [description] |
 
 ---
 
-### Gap Analysis
+## Gap Analysis
 
 | Feature | Competitors | Pylon | Gap |
 |---------|-------------|-------|-----|
@@ -108,16 +121,18 @@ Compare competitors vs current implementation:
 
 ---
 
-### Customer Feedback
-[To be filled in from Pylon conversations - search for "$ARGUMENTS" related tickets]
+## Customer Feedback
+[To be filled in from Pylon conversations - search for "[feature]" related tickets]
 
 ---
 
-### Next Steps
-1. [ ] Gather customer feedback from Pylon conversations
-2. [ ] Validate gaps with internal stakeholders
-3. [ ] Draft PRD with requirements
+## Next Steps
+- [ ] Gather customer feedback from Pylon conversations
+- [ ] Validate gaps with internal stakeholders
+- [ ] Draft PRD with requirements
 ```
 
 Include source links for all competitive claims.
 Include file:line references for all codebase claims.
+
+After saving, provide the GitHub link to the saved file.
